@@ -1,0 +1,48 @@
+---
+- name: Simple Demo Playbook
+  hosts: localhost
+  gather_facts: yes
+
+  vars:
+    demo_message: "Hello from Ansible Runner!"
+    demo_file: "/tmp/ansible_demo.txt"
+
+  tasks:
+    - name: Display welcome message
+      debug:
+        msg: "{{ demo_message }}"
+
+    - name: Show current timestamp
+      debug:
+        msg: "Current time is {{ ansible_date_time.iso8601 }}"
+
+    - name: Create a demo file
+      copy:
+        content: |
+          This file was created by Ansible Runner
+          Timestamp: {{ ansible_date_time.iso8601 }}
+          Hostname: {{ ansible_hostname }}
+        dest: "{{ demo_file }}"
+
+    - name: Check if file was created
+      stat:
+        path: "{{ demo_file }}"
+      register: file_check
+
+    - name: Display file creation result
+      debug:
+        msg: "Demo file created successfully at {{ demo_file }}"
+      when: file_check.stat.exists
+
+    - name: Wait a moment (to see event timing)
+      pause:
+        seconds: 2
+
+    - name: Clean up demo file
+      file:
+        path: "{{ demo_file }}"
+        state: absent
+
+    - name: Final message
+      debug:
+        msg: "Playbook completed successfully!"
