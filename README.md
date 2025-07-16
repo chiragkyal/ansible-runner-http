@@ -1,6 +1,6 @@
-# Ansible Runner HTTP Plugin Example
+# Ansible Runner HTTP Plugin Examples
 
-This guide will walk you through everything you need to know about using Ansible Runner with the HTTP plugin.
+This guide will walk you through everything you need to know about using Ansible Runner with the HTTP plugin, including support for both HTTP and Unix socket endpoints.
 
 ## Quick Start
 
@@ -56,10 +56,13 @@ chmod +x examples/*.py
 **HTTP Plugin**: Sends real-time events from Ansible runs to HTTP endpoints
 **Playbook**: A YAML file containing automation tasks
 
-### Step 3: Start the HTTP Server (Terminal 1)
+### Step 3: Choose Your Demo Type
 
-This server will receive and display events from Ansible:
+You can now try either HTTP or Unix socket communication:
 
+#### Option A: HTTP Server Demo
+
+**Terminal 1 - Start HTTP Server:**
 ```bash
 # Make sure you're in your project directory and virtual environment is active
 cd ansible-runner-http
@@ -69,19 +72,7 @@ source ansible-runner-env/bin/activate
 python examples/simple_http_server.py
 ```
 
-You should see:
-```
-INFO:__main__:Starting HTTP server on port 8080
-INFO:__main__:This server will receive Ansible events from the HTTP plugin
-INFO:__main__:Press Ctrl+C to stop the server
-```
-
-**Keep this terminal open!** This is your event receiver.
-
-### Step 4: Run the Ansible Demo (Terminal 2)
-
-Open a new terminal and run:
-
+**Terminal 2 - Run Ansible with HTTP:**
 ```bash
 # Navigate to your project directory
 cd ansible-runner-http
@@ -89,9 +80,35 @@ cd ansible-runner-http
 # Activate the virtual environment
 source ansible-runner-env/bin/activate
 
-# Run the demo
+# Run the HTTP demo
 python examples/run_ansible_with_http_plugin.py
 ```
+
+#### Option B: Unix Socket Server Demo
+
+**Terminal 1 - Start Unix Socket Server:**
+```bash
+# Make sure you're in your project directory and virtual environment is active
+cd ansible-runner-http
+source ansible-runner-env/bin/activate
+
+# Start the Unix socket server
+python examples/simple_unixsocket_server.py
+```
+
+**Terminal 2 - Run Ansible with Unix Socket:**
+```bash
+# Navigate to your project directory
+cd ansible-runner-http
+
+# Activate the virtual environment
+source ansible-runner-env/bin/activate
+
+# Run the Unix socket demo
+python examples/run_ansible_with_unixsocket_plugin.py
+```
+
+**Keep Terminal 1 open!** This is your event receiver.
 
 ### Step 5: Watch the Magic Happen!
 
@@ -100,26 +117,47 @@ python examples/run_ansible_with_http_plugin.py
 
 ## What Each File Does
 
-### `examples/simple_http_server.py`
-- Creates a web server on port 8080
-- Receives POST requests with Ansible events
-- Displays events in a readable format
-- **Purpose**: Simulates an external system that monitors Ansible
+### HTTP Examples
+- **`examples/simple_http_server.py`**: Creates a web server on port 8080, receives POST requests with Ansible events, displays events in a readable format
+- **`examples/run_ansible_with_http_plugin.py`**: Uses ansible-runner to execute the playbook, configures the HTTP plugin to send events over HTTP, shows multiple configuration methods
 
-### `examples/simple_playbook.yml`
-- A basic Ansible playbook with several tasks
-- Creates files, shows messages, waits, cleans up
-- **Purpose**: Demonstrates different types of Ansible events
+### Unix Socket Examples  
+- **`examples/simple_unixsocket_server.py`**: Creates a Unix socket server at `/tmp/ansible-runner.sock`, receives HTTP requests over Unix socket, displays events in a readable format
+- **`examples/run_ansible_with_unixsocket_plugin.py`**: Uses ansible-runner to execute the playbook, configures the HTTP plugin to send events over Unix socket, demonstrates custom socket paths
 
-### `examples/run_ansible_with_http_plugin.py`
-- Uses ansible-runner to execute the playbook
-- Configures the HTTP plugin to send events
-- Shows two configuration methods
-- **Purpose**: The main integration example
+### Shared
+- **`examples/simple_playbook.yml`**: A basic Ansible playbook with several tasks (creates files, shows messages, waits, cleans up) to demonstrate different types of Ansible events
+
+## HTTP vs Unix Socket: Which to Choose?
+
+| Feature              | HTTP                                   | Unix Socket                       |
+| -------------------- | -------------------------------------- | --------------------------------- |
+| **Network Access**   | ✅ Can receive events from remote hosts | ❌ Local machine only              |
+| **Performance**      | Good                                   | ✅ Excellent (no network overhead) |
+| **Security**         | Requires network security measures     | ✅ Filesystem-based permissions    |
+| **Firewall Issues**  | ❌ May require firewall configuration   | ✅ No network traffic              |
+| **Debugging**        | ✅ Easy with curl, Postman, browser     | Moderate (requires special tools) |
+| **Docker/Container** | ✅ Works across containers              | ✅ Works with volume mounts        |
+| **Load Balancing**   | ✅ Standard HTTP load balancers         | ❌ Not applicable                  |
+
+**Choose HTTP when:**
+- You need to receive events from remote machines
+- You're integrating with web services (Slack, webhooks, APIs)
+- You want to use standard HTTP tools for debugging
+- You need to scale horizontally with load balancers
+
+**Choose Unix Socket when:**
+- All communication is local to one machine
+- You want maximum performance and minimal overhead
+- Security is a priority (no network exposure)
+- You're avoiding firewall complications
+- You're building high-performance local integrations
 
 ## Configuration Methods
 
-### Method 1: Programmatic Configuration
+### HTTP Configuration
+
+**Method 1: Programmatic Configuration**
 ```python
 http_config = {
     'runner_http_url': 'http://localhost:8080',
@@ -134,7 +172,7 @@ ansible_runner.run(
 )
 ```
 
-### Method 2: Environment Variables
+**Method 2: Environment Variables**
 ```bash
 export RUNNER_HTTP_URL="http://localhost:8080"
 export RUNNER_HTTP_PATH="/events"
@@ -143,9 +181,36 @@ export RUNNER_HTTP_HEADERS='{"Authorization": "Bearer token"}'
 # Then run ansible-runner normally - it will pick up the variables
 ```
 
+### Unix Socket Configuration
+
+**Method 1: Programmatic Configuration**
+```python
+unixsocket_config = {
+    'runner_http_url': '/tmp/ansible-runner.sock',  # Unix socket path
+    'runner_http_path': '/ansible-events',          # Optional path
+    'runner_http_headers': {'X-Source': 'my-app'}   # Optional headers
+}
+
+ansible_runner.run(
+    project_dir=project_dir,
+    playbook='my_playbook.yml',
+    settings=unixsocket_config
+)
+```
+
+**Method 2: Environment Variables**
+```bash
+export RUNNER_HTTP_URL="/tmp/ansible-runner.sock"
+export RUNNER_HTTP_PATH="/events"
+
+# The plugin automatically detects Unix sockets by checking if the URL is a file path
+```
+
 ## Real-World Use Cases
 
-### 1. Monitoring Dashboards
+### HTTP Use Cases
+
+**1. Monitoring Dashboards**
 Send Ansible events to Grafana, Kibana, or custom dashboards:
 ```python
 http_config = {
@@ -155,7 +220,7 @@ http_config = {
 }
 ```
 
-### 2. Slack/Teams Notifications
+**2. Slack/Teams Notifications**
 Trigger notifications when deployments complete:
 ```python
 http_config = {
@@ -164,7 +229,7 @@ http_config = {
 }
 ```
 
-### 3. CI/CD Integration
+**3. CI/CD Integration**
 Notify CI/CD systems about deployment status:
 ```python
 http_config = {
@@ -173,12 +238,40 @@ http_config = {
 }
 ```
 
-### 4. Audit Logging
-Send detailed event logs to centralized logging:
+### Unix Socket Use Cases
+
+**1. Local Process Communication**
+For local services or when avoiding network overhead:
 ```python
-http_config = {
-    'runner_http_url': 'https://logging.company.com',
-    'runner_http_path': '/api/logs/ansible',
+unixsocket_config = {
+    'runner_http_url': '/var/run/monitoring.sock',
+    'runner_http_path': '/ansible-events'
+}
+```
+
+**2. Container-to-Host Communication**
+Share sockets between containers and host:
+```python
+unixsocket_config = {
+    'runner_http_url': '/shared/sockets/ansible.sock',
+    'runner_http_headers': {'X-Container': 'ansible-runner'}
+}
+```
+
+**3. Security-Conscious Environments**
+When network traffic should be avoided:
+```python
+unixsocket_config = {
+    'runner_http_url': '/tmp/secure-ansible.sock',
+    'runner_http_path': '/secure-events'
+}
+```
+
+**4. High-Performance Logging**
+For high-volume event processing with minimal overhead:
+```python
+unixsocket_config = {
+    'runner_http_url': '/var/log/ansible.sock',
     'runner_http_headers': {'X-Source': 'production-ansible'}
 }
 ```
@@ -223,20 +316,45 @@ If all tests pass, you're ready to run the examples!
 
 ## Troubleshooting
 
-### "Connection refused" errors
+### HTTP-specific Issues
+
+**"Connection refused" errors**
 - Make sure the HTTP server is running first
 - Check that you're using the correct port (8080)
 - Verify the URL in your configuration
 
-### "Plugin not found" errors
+**No events received**
+- Verify HTTP server is listening
+- Check the URL configuration matches
+- Look for error messages in ansible-runner output
+
+### Unix Socket-specific Issues
+
+**"No such file or directory" errors**
+- Make sure the Unix socket server is running first
+- Check that the socket path exists: `ls -la /tmp/ansible-runner.sock`
+- Verify you have permissions to access the socket
+
+**"Permission denied" errors**
+- Check socket file permissions: `ls -la /tmp/ansible-runner.sock`
+- Ensure the socket directory is writable
+- Try using a different socket path (e.g., in your home directory)
+
+**Socket path in use**
+- Kill any previous server instances
+- Remove the socket file manually: `rm /tmp/ansible-runner.sock`
+- Restart the Unix socket server
+
+### General Issues
+
+**"Plugin not found" errors**
 - Ensure the HTTP plugin is installed: `pip list | grep ansible-runner-http`
 - Check virtual environment is activated
 - If using the alternative setup method, verify you copied all example files correctly
 
-### No events received
-- Verify HTTP server is listening
-- Check the URL configuration matches
-- Look for error messages in ansible-runner output
+**Events not formatted correctly**
+- Check that the Content-Type header is set to `application/json`
+- Verify the server is receiving valid JSON data
 
 ## Understanding the Architecture
 

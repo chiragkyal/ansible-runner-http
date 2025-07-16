@@ -95,8 +95,10 @@ def main():
     
     files = [
         "simple_http_server.py",
+        "simple_unixsocket_server.py",
         "simple_playbook.yml", 
-        "run_ansible_with_http_plugin.py"
+        "run_ansible_with_http_plugin.py",
+        "run_ansible_with_unixsocket_plugin.py"
     ]
     
     copy_success = True
@@ -164,11 +166,14 @@ def main():
     print("   source ansible-runner-env/bin/activate")
     
     if copy_success:
-        print("\n4. In Terminal 1 (HTTP Server):")
-        print("   python simple_http_server.py")
-        print("\n5. In Terminal 2 (Ansible Runner):")
-        print("   python run_ansible_with_http_plugin.py")
-        print("\n6. Watch the events flow from Terminal 2 to Terminal 1!")
+        print("\n4. Choose your demo type:")
+        print("\n   🌐 HTTP DEMO:")
+        print("   Terminal 1: python simple_http_server.py")
+        print("   Terminal 2: python run_ansible_with_http_plugin.py")
+        print("\n   🔌 UNIX SOCKET DEMO:")
+        print("   Terminal 1: python simple_unixsocket_server.py")
+        print("   Terminal 2: python run_ansible_with_unixsocket_plugin.py")
+        print("\n5. Watch the events flow from Terminal 2 to Terminal 1!")
     else:
         print("\n4. First, fix the file copying issue:")
         print("   Make sure you're running this script from the repository root")
