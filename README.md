@@ -1,27 +1,10 @@
-# Ansible Runner HTTP Plugin - Complete Beginner's Guide
+# Ansible Runner HTTP Plugin Example
 
-🌍 **Works on Mac and Linux** - Universal Unix setup  
-⚡ **5-minute setup** - Automated installation script included  
-🚀 **Real-time events** - See Ansible automation events live  
+This guide will walk you through everything you need to know about using Ansible Runner with the HTTP plugin.
 
-This guide will walk you through everything you need to know about using Ansible Runner with the HTTP plugin, from basic concepts to running real examples.
+## Quick Start
 
-## What You'll Learn
-
-- What Ansible Runner is and how it works
-- How to configure and use the HTTP plugin
-- How to run practical examples
-- How to integrate this into your own projects
-
-## Prerequisites
-
-- Python 3.9+ installed on Mac or Linux
-- Basic familiarity with command line
-- Internet connection to download packages
-
-## Quick Start (Step-by-Step)
-
-### Option 1: Super Easy Setup (Recommended)
+### Option 1: Easy Setup (Recommended)
 
 Clone this repository and run the automated setup:
 
@@ -42,36 +25,11 @@ The script will:
 - ✅ Verify everything works
 - ✅ Show you exactly what to do next
 
-**That's it!** Follow the instructions the script gives you.
+Follow the instructions the script gives you.
 
 ---
 
 ### Option 2: Manual Setup
-
-### Step 1: Project Setup (One-time setup)
-
-Create a new directory and set up your environment:
-
-```bash
-# Clone this repository
-git clone https://github.com/chiragkyal/ansible-runner-http.git
-cd ansible-runner-http
-
-# Create a virtual environment
-python3 -m venv ansible-runner-env
-
-# Activate the virtual environment
-source ansible-runner-env/bin/activate
-
-# Install all required packages (including the HTTP plugin)
-pip install ansible-core>=2.12.0 ansible-runner>=2.0.0 ansible-runner-http>=1.0.0
-
-# Make the Python files executable
-chmod +x examples/*.py
-```
-
-#### Alternative Setup Method (using requirements.txt)
-
 If you prefer using a requirements file:
 
 ```bash
@@ -87,6 +45,9 @@ source ansible-runner-env/bin/activate
 
 # Install packages
 pip install -r requirements.txt
+
+# Make the Python files executable
+chmod +x examples/*.py
 ```
 
 ### Step 2: Understanding the Components
@@ -277,14 +238,6 @@ If all tests pass, you're ready to run the examples!
 - Check the URL configuration matches
 - Look for error messages in ansible-runner output
 
-## Next Steps
-
-1. **Modify the playbook**: Add your own tasks to `examples/simple_playbook.yml`
-2. **Change the endpoint**: Point to your own HTTP service
-3. **Add authentication**: Include API keys or tokens in headers
-4. **Filter events**: Modify the HTTP server to only show certain event types
-5. **Database integration**: Store events in a database instead of just logging
-
 ## Understanding the Architecture
 
 ```
@@ -300,65 +253,3 @@ If all tests pass, you're ready to run the examples!
                                                 └─────────────────┘
 ```
 
-## Advanced Examples
-
-Want to do more? Check out these patterns:
-
-### Custom Event Filtering
-```python
-# Only send failed events
-def custom_event_handler(event_data):
-    if event_data.get('event') in ['runner_on_failed', 'runner_on_unreachable']:
-        send_to_alerting_system(event_data)
-```
-
-### Multiple Endpoints
-```python
-# Send to multiple services
-configs = [
-    {'runner_http_url': 'https://monitoring.company.com'},
-    {'runner_http_url': 'https://slack.company.com/webhook'}
-]
-```
-
-Ready to start building your own integrations? You now have all the tools and knowledge you need!
-
-## Sharing This With Others
-
-Want to share this demo with colleagues or friends? It's super easy:
-
-### Method 1: Share the repository
-Just send them this command:
-```bash
-git clone https://github.com/chiragkyal/ansible-runner-http.git && cd ansible-runner-http && python3 setup_demo.py
-```
-
-### Method 2: Share your own requirements.txt
-If you've customized the setup, share your `requirements.txt`:
-```bash
-# Your requirements.txt
-ansible-core>=2.12.0
-ansible-runner>=2.0.0
-ansible-runner-http>=1.0.0
-requests>=2.25.0
-requests-unixsocket>=0.3.0
-
-# Then anyone can: pip install -r requirements.txt
-```
-
-## Universal Installation Summary
-
-✅ **Unix Systems**: macOS and Linux  
-✅ **Any Python 3.9+**: Works with standard Python installations  
-✅ **No sudo/admin required**: Uses virtual environments  
-✅ **Isolated environment**: Won't interfere with other Python projects  
-✅ **Published on PyPI**: `ansible-runner-http` package is publicly available  
-✅ **Example files in repository**: All examples available locally  
-
-This makes it perfect for:
-- 👥 **Team sharing**: Easy for teams to set up identical environments
-- 🎓 **Training/workshops**: Instructors can share with students  
-- 📊 **Demos**: Quick setup for sales demos or presentations
-- 🔬 **Testing**: Spin up clean environments for testing
-
-For more details and the latest documentation see: https://ansible-runner.readthedocs.io/en/latest
