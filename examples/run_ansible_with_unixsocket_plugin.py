@@ -9,10 +9,52 @@ import sys
 import ansible_runner
 import tempfile
 import logging
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def create_persistent_project_dir(run_name):
+    """
+    Create a persistent project directory that can be accessed later
+    """
+    script_dir = os.path.dirname(__file__)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    artifacts_base = os.path.join(script_dir, f"ansible_artifacts_{run_name}_{timestamp}")
+    project_dir = os.path.join(artifacts_base, 'project')
+    
+    # Create the directory structure
+    os.makedirs(project_dir, exist_ok=True)
+    
+    logger.info(f"📁 Created persistent project directory: {artifacts_base}")
+    logger.info(f"🔍 Artifacts will be saved to: {artifacts_base}/artifacts/")
+    
+    return artifacts_base, project_dir
+
+def setup_playbook(project_dir):
+    """
+    Copy the playbook to the project directory
+    """
+    # Copy our playbook to the project directory
+    playbook_path = os.path.join(project_dir, 'simple_playbook.yml')
+    
+    # Read the playbook content
+    script_dir = os.path.dirname(__file__)
+    source_playbook = os.path.join(script_dir, 'simple_playbook.yml')
+    
+    if not os.path.exists(source_playbook):
+        logger.error(f"Playbook not found at {source_playbook}")
+        logger.error("Make sure you're running this script from the examples directory")
+        return False, None
+    
+    with open(source_playbook, 'r') as f:
+        playbook_content = f.read()
+    
+    with open(playbook_path, 'w') as f:
+        f.write(playbook_content)
+    
+    return True, playbook_path
 
 def run_playbook_with_unixsocket_plugin():
     """
@@ -45,36 +87,27 @@ def run_playbook_with_unixsocket_plugin():
         logger.warning("Make sure to start the Unix socket server first!")
         logger.warning("Run: python examples/simple_unixsocket_server.py")
     
-    # Create a temporary directory for ansible-runner
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        project_dir = os.path.join(tmp_dir, 'project')
-        os.makedirs(project_dir)
-        
-        # Copy our playbook to the project directory
-        playbook_path = os.path.join(project_dir, 'simple_playbook.yml')
-        
-        # Read the playbook content
-        script_dir = os.path.dirname(__file__)
-        source_playbook = os.path.join(script_dir, 'simple_playbook.yml')
-        
-        if not os.path.exists(source_playbook):
-            logger.error(f"Playbook not found at {source_playbook}")
-            logger.error("Make sure you're running this script from the examples directory")
+    # Create a persistent directory for ansible-runner
+    artifacts_base, project_dir = create_persistent_project_dir("unixsocket")
+    
+    try:
+        # Setup the playbook
+        success, playbook_path = setup_playbook(project_dir)
+        if not success:
             return False
-        
-        with open(source_playbook, 'r') as f:
-            playbook_content = f.read()
-        
-        with open(playbook_path, 'w') as f:
-            f.write(playbook_content)
         
         # Run the playbook with ansible-runner
         try:
+            # Generate a unique identifier for this run
+            import uuid
+            run_ident = str(uuid.uuid4())
+            
             result = ansible_runner.run(
-                project_dir=project_dir,
+                private_data_dir=artifacts_base,  # Use the base directory
                 playbook='simple_playbook.yml',
                 settings=unixsocket_config,  # This enables the HTTP plugin with Unix socket
-                verbosity=1
+                verbosity=1,
+                ident=run_ident  # Specify our own identifier
             )
             
             logger.info("=" * 60)
@@ -82,19 +115,32 @@ def run_playbook_with_unixsocket_plugin():
             logger.info("=" * 60)
             logger.info(f"Status: {result.status}")
             logger.info(f"Return code: {result.rc}")
-            logger.info(f"Stats: {result.stats}")
             
             if result.status == 'successful':
                 logger.info("✅ Playbook completed successfully!")
                 logger.info("Check your Unix socket server logs to see the events that were sent.")
             else:
                 logger.error("❌ Playbook failed!")
+            
+            logger.info("=" * 60)
+            logger.info("ARTIFACTS LOCATION")
+            logger.info("=" * 60)
+            logger.info(f"📂 Project files: {project_dir}")
+            logger.info(f"📋 Artifacts: {artifacts_base}/artifacts/")
+            logger.info(f"📊 Event files: {artifacts_base}/artifacts/{run_ident}/job_events/")
+            logger.info(f"📝 Stdout: {artifacts_base}/artifacts/{run_ident}/stdout")
+            logger.info(f"📈 Status: {artifacts_base}/artifacts/{run_ident}/status")
+            logger.info("=" * 60)
                 
             return result.status == 'successful'
             
         except Exception as e:
             logger.error(f"Error running playbook: {e}")
             return False
+            
+    except Exception as e:
+        logger.error(f"Error setting up project directory: {e}")
+        return False
 
 def run_with_environment_variables():
     """
@@ -118,33 +164,40 @@ def run_with_environment_variables():
         logger.warning(f"⚠️  Unix socket not found at {socket_path}")
         logger.warning("Make sure to start the Unix socket server first!")
     
-    # Create a temporary directory for ansible-runner
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        project_dir = os.path.join(tmp_dir, 'project')
-        os.makedirs(project_dir)
-        
-        # Copy our playbook to the project directory
-        playbook_path = os.path.join(project_dir, 'simple_playbook.yml')
-        
-        # Read the playbook content
-        script_dir = os.path.dirname(__file__)
-        source_playbook = os.path.join(script_dir, 'simple_playbook.yml')
-        
-        with open(source_playbook, 'r') as f:
-            playbook_content = f.read()
-        
-        with open(playbook_path, 'w') as f:
-            f.write(playbook_content)
+    # Create a persistent directory for ansible-runner
+    artifacts_base, project_dir = create_persistent_project_dir("env_vars")
+    
+    try:
+        # Setup the playbook
+        success, playbook_path = setup_playbook(project_dir)
+        if not success:
+            return False
         
         # Run without explicit settings - will use environment variables
+        import uuid
+        run_ident = str(uuid.uuid4())
+        
         result = ansible_runner.run(
-            project_dir=project_dir,
+            private_data_dir=artifacts_base,  # Use the base directory
             playbook='simple_playbook.yml',
-            verbosity=1
+            verbosity=1,
+            ident=run_ident
         )
         
         logger.info(f"Status: {result.status}")
+        logger.info("=" * 60)
+        logger.info("ARTIFACTS LOCATION")
+        logger.info("=" * 60)
+        logger.info(f"📂 Project files: {project_dir}")
+        logger.info(f"📋 Artifacts: {artifacts_base}/artifacts/")
+        logger.info(f"📊 Event files: {artifacts_base}/artifacts/{run_ident}/job_events/")
+        logger.info("=" * 60)
+        
         return result.status == 'successful'
+        
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return False
 
 def run_with_custom_socket_path():
     """
@@ -175,34 +228,41 @@ def run_with_custom_socket_path():
         logger.warning(f"⚠️  Custom Unix socket not found at {custom_socket}")
         logger.warning("This demo will likely fail unless the server is running with this path!")
     
-    # Create a temporary directory for ansible-runner
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        project_dir = os.path.join(tmp_dir, 'project')
-        os.makedirs(project_dir)
-        
-        # Copy our playbook to the project directory
-        playbook_path = os.path.join(project_dir, 'simple_playbook.yml')
-        
-        # Read the playbook content
-        script_dir = os.path.dirname(__file__)
-        source_playbook = os.path.join(script_dir, 'simple_playbook.yml')
-        
-        with open(source_playbook, 'r') as f:
-            playbook_content = f.read()
-        
-        with open(playbook_path, 'w') as f:
-            f.write(playbook_content)
+    # Create a persistent directory for ansible-runner
+    artifacts_base, project_dir = create_persistent_project_dir("custom_socket")
+    
+    try:
+        # Setup the playbook
+        success, playbook_path = setup_playbook(project_dir)
+        if not success:
+            return False
         
         # Run the playbook
+        import uuid
+        run_ident = str(uuid.uuid4())
+        
         result = ansible_runner.run(
-            project_dir=project_dir,
+            private_data_dir=artifacts_base,  # Use the base directory
             playbook='simple_playbook.yml',
             settings=unixsocket_config,
-            verbosity=1
+            verbosity=1,
+            ident=run_ident
         )
         
         logger.info(f"Status: {result.status}")
+        logger.info("=" * 60)
+        logger.info("ARTIFACTS LOCATION")
+        logger.info("=" * 60)
+        logger.info(f"📂 Project files: {project_dir}")
+        logger.info(f"📋 Artifacts: {artifacts_base}/artifacts/")
+        logger.info(f"📊 Event files: {artifacts_base}/artifacts/{run_ident}/job_events/")
+        logger.info("=" * 60)
+        
         return result.status == 'successful'
+        
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return False
 
 if __name__ == '__main__':
     print("\n🚀 Ansible Runner Unix Socket Plugin Demo")
@@ -231,6 +291,8 @@ if __name__ == '__main__':
     if success:
         print("\n✅ Demo completed successfully!")
         print("Check the Unix socket server terminal to see the events that were received.")
+        print("\n📁 The artifacts directory has been preserved for your inspection.")
+        print("You can examine the event files, stdout, and other artifacts.")
     else:
         print("\n❌ Demo failed. Check the logs above for details.")
     
